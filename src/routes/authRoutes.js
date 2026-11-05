@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { registerPatient, registerStaff, login } = require('../controllers/authController');
 const { authenticate, requireRole } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
-router.post('/register/patient', registerPatient);
+router.post('/register/patient', upload.single('photo'), registerPatient);
 router.post('/register/staff', registerStaff);
 router.post('/login', login);
 
