@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 const REASONS = ['review', 'appointment', 'medication'];
-const COOLDOWN_HOURS = 2;
+const COOLDOWN_MINUTES = Number(process.env.ARRIVAL_COOLDOWN_MINUTES) || 120;
 
 exports.arrival = async (req, res) => {
   const client = await pool.connect();
@@ -19,9 +19,9 @@ exports.arrival = async (req, res) => {
     const recent = await client.query(
       `SELECT id FROM visits
        WHERE patient_id = $1
-         AND arrived_at > NOW() - INTERVAL '${COOLDOWN_HOURS} hours'
+         AND arrived_at > NOW() - make_interval(mins => $2::int)
        LIMIT 1`,
-      [patientId]
+      [patientId, COOLDOWN_MINUTES]
     );
 
     if (recent.rows.length > 0) {

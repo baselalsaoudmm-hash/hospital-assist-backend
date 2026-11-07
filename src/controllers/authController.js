@@ -73,8 +73,12 @@ exports.registerPatient = async (req, res) => {
     res.status(201).json({ ...result.rows[0], has_photo: Boolean(photo) });
   } catch (err) {
     removeFile(photo);
-    if (err.code === '23505') {
-      return res.status(409).json({ message: 'رقم الهاتف أو الرقم الوطني مسجل مسبقاً' });
+       if (err.code === '23505') {
+      const field = String(err.constraint || '').includes('national_id') ? 'national_id' : 'phone';
+      const message = field === 'national_id'
+        ? 'الرقم الوطني/المتسلسل مسجل مسبقاً'
+        : 'رقم الهاتف مسجل مسبقاً';
+      return res.status(409).json({ message, field });
     }
     console.error(err);
     res.status(500).json({ message: 'خطأ في السيرفر' });
@@ -136,10 +140,22 @@ exports.login = async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    res.json({
-      token,
-      user: { id: user.id, full_name: user.full_name, role },
-    });
+       const profile = { id: user.id, full_name: user.full_name, role, phone: user.phone };
+
+    if (role === 'patient') {
+      Object.assign(profile, {
+        disability_type: user.disability_type,
+        disability_note: user.disability_note,
+        nationality: user.nationality,
+        gender: user.gender,
+        birth_date: user.birth_date,
+        has_photo: Boolean(user.photo_path),
+      });
+    } else {
+      Object.assign(profile, { department: user.department });
+    }
+
+    res.json({ token, user: profile });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'خطأ في السيرفر' });
